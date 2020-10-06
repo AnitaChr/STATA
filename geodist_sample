@@ -1,0 +1,291 @@
+/*******************************************************************************
+					Do file by Anita Christopher
+          Dta files not included
+						9th July-11th July 2020
+*******************************************************************************/
+						
+						
+						**packages used**
+						
+	ssc install geodist
+	ssc install fs
+
+						**setting global dopath**
+/* 
+	Ensure the following files are present in the dopath titled Task below
+		
+		/Task
+			/Geo
+				district_crosswalk_small.csv
+			/Rainfall
+				rainfall_2009.csv
+				rainfall_2010.csv
+      /Temperature
+			  temperature_2009.csv
+		  	temperature_2010.csv
+ */
+	clear
+	global dopath "C:\Users\anita\Desktop\TASK"
+			
+********************************************************************************
+					
+//Converting Geo to dta file
+	
+	//import delimited using "$dopath\Geo\district_crosswalk_small.csv", clear
+	//save "$dopath\Geo\district_crosswalk_small.dta", replace
+	
+********************************************************************************
+/*
+Each of the following files are done individually instead of for loops
+due to memory restrictions. 
+The cross dta files are also split according to month for faster computation
+*/
+********************************************************************************
+							*Rainfall*
+							
+
+					
+//	import delimited using "$dopath\Rainfall\rainfall_2009.csv", clear
+//	cross using "$dopath\Geo\district_crosswalk_small.dta"
+//	save "$dopath\Rainfall\cross1.dta", replace
+	
+
+		forvalues i =1/12 {
+		
+			use "$dopath/Rainfall/cross1.dta"
+			
+			//dividing dataset for ease of computation
+			
+			keep if month==`i'
+			geodist latitude longitude centroid_latitude centroid_longitude, gen(d)
+		
+			sort stid_iaa distid_iaa day
+			
+			//dropping distances greater than 100km
+			drop if d>100
+			
+			//gen unique id
+			gen str23 unique = string( year , "%04.0f") + string( month , "%02.0f") + string( day , "%02.0f")+ string( unique_dist_id, "%04.0f")
+			
+			//generating weights, werain = weighted rainfall in a district
+			gen weights = 1/(d^2)
+			gen werain = weights * rainfall
+			
+			//wesum=sum of weights, rainsum=sum of weighted rainfall
+			bysort unique: egen wesum = sum(weights)
+			bysort unique: egen rainsum = sum(werain)
+			
+			//totrain=weighted averaged total rainfall in a district
+			gen totrain=rainsum/ wesum
+			
+			//ditnos is the number of grid points in a district, meanrain is mean
+			egen distnos = count( unique_dist_id ), by(unique)
+			gen meanrain= totrain/ distnos
+			
+			duplicates drop unique, force
+		
+			save "$dopath/Rainfall/r1_`i'", replace
+		}
+	
+	cd "$dopath\Rainfall"	
+	fs r1_*.dta
+	append using `r(files)'
+	sort stid_iaa distid_iaa date		
+	save "$dopath/Rainfall/2009", replace
+					
+							********
+
+//2010
+					
+//	import delimited using "$dopath\Rainfall\rainfall_2010.csv", clear
+//	cross using "$dopath\Geo\district_crosswalk_small.dta"
+//	save "$dopath\Rainfall\cross2.dta", replace
+	
+
+		forvalues i =1/12 {
+		
+			use "$dopath/Rainfall/cross2.dta"
+			
+			//dividing dataset for ease of computation
+			
+			keep if month==`i'
+			geodist latitude longitude centroid_latitude centroid_longitude, gen(d)
+		
+			sort stid_iaa distid_iaa day
+			
+			//dropping distances greater than 100km
+			drop if d>100
+			
+			//gen unique id
+			gen str23 unique = string( year , "%04.0f") + string( month , "%02.0f") + string( day , "%02.0f")+ string( unique_dist_id, "%04.0f")
+			
+			//generating weights, werain = weighted rainfall in a district
+			gen weights = 1/(d^2)
+			gen werain = weights * rainfall
+			
+			//wesum=sum of weights, rainsum=sum of weighted rainfall
+			bysort unique: egen wesum = sum(weights)
+			bysort unique: egen rainsum = sum(werain)
+			
+			//totrain=weighted averaged total rainfall in a district
+			gen totrain=rainsum/ wesum
+			
+			//ditnos is the number of grid points in a district, meanrain is mean
+			egen distnos = count( unique_dist_id ), by(unique)
+			gen meanrain= totrain/ distnos
+			
+			duplicates drop unique, force
+		
+			save "$dopath/Rainfall/r2_`i'", replace
+		}
+
+	duplicates drop unique, force
+	cd "$dopath\Rainfall"	
+	fs r2_*.dta
+	append using `r(files)'
+	sort stid_iaa distid_iaa date		
+	save "$dopath/Rainfall/2010", replace
+*FINAL APPEND*
+	
+	duplicates drop unique, force
+	cd "$dopath\Rainfall"
+	fs 20*.dta
+	append using `r(files)'
+	sort stid_iaa distid_iaa year month day
+	save "$dopath/rainfall", replace
+	
+********************************************************************************
+
+							*Temperature*
+	
+//2009
+					
+	//import delimited using "$dopath\Temperature\temperature_2009.csv", clear
+	//cross using "$dopath\Geo\district_crosswalk_small.dta"
+	//save "$dopath\Temperature\cross1.dta", replace
+	
+
+		forvalues i =1/12 {
+		
+			use "$dopath/Temperature/cross1.dta"
+			
+			//dividing dataset for ease of computation
+			
+			keep if month==`i'
+			geodist latitude longitude centroid_latitude centroid_longitude, gen(d)
+		
+			sort stid_iaa distid_iaa day
+
+			//dropping distances greater than 100km
+			drop if d>100
+			
+			//gen unique id
+			gen str23 unique = string( year , "%04.0f") + string( month , "%02.0f") + string( day , "%02.0f")+ string( unique_dist_id, "%04.0f")
+			
+			//generating weights, 
+			gen weights = 1/(d^2)
+			gen wetemp = weights * temperature
+			
+			//wesum=sum of weights, rainsum=sum of weighted rainfall
+			bysort unique: egen wesum = sum(weights)
+			bysort unique: egen tempsum = sum(wetemp)
+			
+			//totrain=weighted averaged total rainfall in a district
+			gen tottemp=tempsum/ wesum
+			
+			//ditnos is the number of grid points in a district, meanrain is mean
+			egen distnos = count( unique_dist_id ), by(unique)
+			gen meantemp= tottemp/ distnos
+
+			duplicates drop unique, force
+			
+			save "$dopath/Temperature/t1_`i'", replace
+		}
+	
+	duplicates drop unique, force
+	cd "$dopath\Temperature"	
+	fs t1_*.dta
+	append using `r(files)'
+	sort stid_iaa distid_iaa date		
+	save "$dopath/Temperature/2009", replace
+					
+							********
+
+	
+//2010
+					
+//	import delimited using "$dopath\Temperature\temperature_2010.csv", clear
+//	cross using "$dopath\Geo\district_crosswalk_small.dta"
+//	save "$dopath\Temperature\cross2.dta", replace
+	
+
+			forvalues i =1/12 {
+		
+			use "$dopath/Temperature/cross2.dta"
+			
+			//dividing dataset for ease of computation
+			
+			keep if month==`i'
+			geodist latitude longitude centroid_latitude centroid_longitude, gen(d)
+		
+			sort stid_iaa distid_iaa day
+
+			//dropping distances greater than 100km
+			drop if d>100
+			
+			//gen unique id
+			gen str23 unique = string( year , "%04.0f") + string( month , "%02.0f") + string( day , "%02.0f")+ string( unique_dist_id, "%04.0f")
+			
+			//generating weights, 
+			gen weights = 1/(d^2)
+			gen wetemp = weights * temperature
+			
+			//wesum=sum of weights, rainsum=sum of weighted rainfall
+			bysort unique: egen wesum = sum(weights)
+			bysort unique: egen tempsum = sum(wetemp)
+			
+			//totrain=weighted averaged total rainfall in a district
+			gen tottemp=tempsum/ wesum
+			
+			//ditnos is the number of grid points in a district, meanrain is mean
+			egen distnos = count( unique_dist_id ), by(unique)
+			gen meantemp= tottemp/ distnos
+
+			duplicates drop unique, force
+			
+			save "$dopath/Temperature/t2_`i'", replace
+		}
+	
+	duplicates drop unique, force
+	cd "$dopath\Temperature"	
+	fs t2_*.dta
+	append using `r(files)'
+	sort stid_iaa distid_iaa date		
+	save "$dopath/Temperature/2010", replace
+  *FINAL APPEND*
+	
+	duplicates drop unique, force
+	cd "$dopath\Temperature"	
+	fs 20*.dta
+	append using `r(files)'
+	sort stid_iaa distid_iaa date
+	save "$dopath/temperature", replace
+	
+********************************************************************************
+
+						*FINAL DATASET*
+
+	merge 1:1 unique using "$dopath/rainfall.dta", nogen
+	save "$dopath/final_district.dta", replace
+
+********************************************************************************
+					
+							*SECTION 3*
+	
+//Formatting date because of differences in rainfall and temperature datsets.
+	
+	gen edate=mdy( month, day, year)
+	format edate %d
+
+********************************************************************************
+//end of sample codes
